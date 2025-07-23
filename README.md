@@ -7,11 +7,13 @@
 **Intelligent flag recommendation system for SuperClaude - Just express your intent, and Claude automatically applies the optimal flag combination!**
 
 ### ⚡ Quick Start
+
+**Standard Installation (Wrapper Mode):**
 ```bash
 # Install
 git clone https://github.com/Soochol/superclaude-auto-flags.git
 cd superclaude-auto-flags
-bash install.sh
+bash install/install.sh
 source ~/.bashrc
 
 # Usage
@@ -22,12 +24,28 @@ cs "/sc:implement React component"
 # → Automatically applies: --persona-frontend --magic --c7
 ```
 
+**Advanced Installation (Hook Integration):**
+```bash
+# Install with Hook support
+python3 install/install_with_hooks.py --hooks
+source ~/.bashrc
+
+# Usage - Direct claude command support!
+claude "/sc:analyze find security vulnerabilities"
+# → Hook automatically processes and applies optimal flags
+
+# Traditional wrapper also works
+cs "/sc:implement React component"
+```
+
 ### 🎯 Key Features
 - 🧠 **Intelligent Pattern Matching**: ORCHESTRATOR.md-based automatic flag recommendation
 - 🎯 **Project Context Recognition**: Auto-detects Python/JavaScript/etc
 - ⚡ **Complexity-based Optimization**: Auto-adjusts based on file count and complexity
 - 🔧 **MCP Server Auto-activation**: Smart selection of Sequential, Context7, Magic, Playwright
 - 📊 **Confidence-based Recommendations**: 95% accuracy in flag combinations
+- 🎣 **Hook Integration**: Direct claude command support with automatic preprocessing
+- 🛡️ **Tool Optimization**: Automatic safety checks and parameter optimization
 
 ### 📋 Supported Patterns
 | User Input | Auto-Detects | Recommended Flags |
@@ -48,7 +66,7 @@ cs "/sc:implement React component"
 # 설치
 git clone https://github.com/Soochol/superclaude-auto-flags.git
 cd superclaude-auto-flags
-bash install.sh
+bash install/install.sh
 source ~/.bashrc
 
 # 사용법
@@ -115,6 +133,41 @@ cs "/sc:improve 성능 병목 지점 찾아서 최적화해줘"
 💡 근거: 성능 최적화 키워드 매칭 + 복잡도 기반 thinking 조정
 ```
 
+## 📁 Project Structure
+
+```
+superclaude-auto-flags/
+├── 📂 src/                    # Core source code
+│   ├── claude_sc_preprocessor.py      # Main processing engine
+│   ├── claude_smart_wrapper.py        # Command wrapper
+│   ├── superclaude_prompt_hook.py     # Hook integration
+│   ├── tool_optimizer.py              # Tool optimization
+│   ├── orchestrator_rules.yaml        # Routing rules
+│   └── superclaude_hooks_config.json  # Hook configuration
+├── 📂 learning/               # Learning system components
+│   ├── adaptive_recommender.py        # AI-powered recommendations
+│   ├── data_collector.py              # Usage data collection
+│   ├── feedback_processor.py          # Learning feedback processing
+│   ├── learning_engine.py             # Core learning algorithms
+│   ├── learning_storage.py            # Data persistence
+│   └── performance_optimizer.py       # Performance optimization
+├── 📂 install/                # Installation scripts
+│   ├── install.sh                     # Simple installation (recommended)
+│   ├── install_with_hooks.py          # Advanced Hook installation
+│   ├── install_learning_deps.py       # Learning system dependencies
+│   └── README.md                      # Installation guide
+├── 📂 tests/                  # Test suite
+│   ├── unit/                          # Unit tests
+│   ├── integration/                   # Integration tests
+│   ├── manual/                        # Manual testing scripts
+│   └── validation/                    # System validation
+├── 📂 docs/                   # Documentation
+│   ├── guides/                        # User guides
+│   └── reports/                       # Analysis reports
+├── 📂 scripts/                # Utility scripts
+└── 📄 README.md               # This file
+```
+
 ## 🔧 System Requirements
 - Python 3.6+
 - Claude Code installed
@@ -136,6 +189,14 @@ cs "/sc:improve 성능 병목 지점 찾아서 최적화해줘"
 - Combines base flags with context-specific modifiers
 - Adjusts thinking levels based on complexity
 - Automatically enables delegation for large projects
+
+### 4. Hook Integration (Advanced)
+- **UserPromptSubmit Hook**: Intercepts `/sc:` commands in direct `claude` usage
+- **PreToolUse Hook**: Optimizes tool parameters before execution
+  - Large file auto-chunking for Read tool
+  - Scope limitation for Grep in large projects
+  - Safety checks for Bash commands
+- **Automatic Fallback**: Safe error handling ensures Claude always works
 
 ## 🤝 Contributing
 Feel free to submit issues, feature requests, or pull requests!

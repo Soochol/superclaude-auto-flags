@@ -12,8 +12,8 @@ import os
 import json
 from pathlib import Path
 
-# claude_sc_preprocessor를 import하기 위해 경로 추가
-sys.path.insert(0, str(Path.home() / '.claude'))
+# claude_sc_preprocessor를 import하기 위해 새 경로 추가
+sys.path.insert(0, str(Path.home() / '.claude' / 'superclaude' / 'core'))
 
 try:
     from claude_sc_preprocessor import SCCommandProcessor

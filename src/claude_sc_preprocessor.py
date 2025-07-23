@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-SuperClaude 지능형 플래그 자동완성 시스템
+SuperClaude 지능형 플래그 자동완성 시스템 (학습 기능 통합)
 
-사용자가 /sc: 명령어를 입력하면 ORCHESTRATOR.md 로직에 따라
+사용자가 /sc: 명령어를 입력하면 ORCHESTRATOR.md 로직과 학습된 데이터에 따라
 자동으로 최적의 플래그 조합을 추천하고 적용하는 시스템
 """
 
@@ -10,9 +10,28 @@ import re
 import json
 import yaml
 import os
+import time
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 from dataclasses import dataclass
+
+# 학습 시스템 통합 - 새로운 경로 구조
+try:
+    import sys
+    from pathlib import Path
+    
+    # 새 구조에서 학습 모듈 경로 추가
+    learning_path = Path.home() / '.claude' / 'superclaude' / 'learning'
+    if str(learning_path) not in sys.path:
+        sys.path.insert(0, str(learning_path))
+    
+    from adaptive_recommender import get_personalized_recommender, PersonalizedRecommendation
+    from data_collector import get_data_collector
+    from feedback_processor import get_feedback_processor
+    LEARNING_ENABLED = True
+except ImportError:
+    LEARNING_ENABLED = False
+    print("Learning system not available - using static patterns only")
 
 
 @dataclass
@@ -403,17 +422,30 @@ class ProjectAnalyzer:
 
 
 class SCCommandProcessor:
-    """SuperClaude 명령어 전처리기"""
+    """SuperClaude 명령어 전처리기 (학습 기능 통합)"""
     
     def __init__(self, rules_path: Optional[str] = None):
         if rules_path is None:
-            rules_path = str(Path.home() / '.claude' / 'orchestrator_rules.yaml')
+            rules_path = str(Path.home() / '.claude' / 'superclaude' / 'core' / 'orchestrator_rules.yaml')
         
         self.pattern_matcher = PatternMatcher(rules_path)
         self.current_dir = os.getcwd()
         
-    def process(self, user_input: str) -> str:
-        """사용자 입력 전처리"""
+        # 학습 시스템 초기화
+        if LEARNING_ENABLED:
+            self.recommender = get_personalized_recommender()
+            self.data_collector = get_data_collector()
+            self.feedback_processor = get_feedback_processor()
+        else:
+            self.recommender = None
+            self.data_collector = None
+            self.feedback_processor = None
+        
+        # 현재 상호작용 추적
+        self.current_interaction_id = None
+        
+    def process(self, user_input: str, quick_mode: bool = True) -> str:
+        """사용자 입력 전처리 (학습 기능 포함)"""
         
         # /sc: 명령어가 아니면 그대로 반환
         if not user_input.strip().startswith('/sc:'):
@@ -426,8 +458,50 @@ class SCCommandProcessor:
             # 프로젝트 컨텍스트 분석
             context = self._get_project_context()
             
-            # 최적 플래그 조합 찾기
-            recommendation = self.pattern_matcher.find_best_match(command, description, context)
+            # 빠른 모드: 즉시 응답 우선
+            if quick_mode:
+                try:
+                    # 성능 최적화 모듈 새 경로에서 import
+                    perf_optimizer_path = Path.home() / '.claude' / 'superclaude' / 'learning'
+                    if str(perf_optimizer_path) not in sys.path:
+                        sys.path.insert(0, str(perf_optimizer_path))
+                    from performance_optimizer import quick_recommend
+                    quick_result = quick_recommend(user_input, command, description, context.__dict__)
+                    
+                    # 빠른 추천을 PersonalizedRecommendation 형식으로 변환
+                    recommendation = type('QuickRecommendation', (), {
+                        'flags': quick_result.flags,
+                        'confidence': quick_result.confidence,
+                        'reasoning': [quick_result.reasoning],
+                        'personalization_factors': {'quick_mode': True, 'response_time_ms': quick_result.response_time_ms},
+                        'learning_confidence': 0.0,
+                        'fallback_used': False,
+                        'recommendation_id': f"quick_{int(time.time())}"
+                    })()
+                    
+                except ImportError:
+                    # 성능 최적화 모듈 없으면 기본 처리
+                    quick_mode = False
+            
+            # 일반 모드 또는 빠른 모드 실패시
+            if not quick_mode:
+                # 학습 기반 추천 또는 기본 패턴 매칭
+                if LEARNING_ENABLED and self.recommender:
+                    recommendation = self._get_learning_based_recommendation(user_input, context)
+                    
+                    # 상호작용 시작 기록
+                    if self.data_collector:
+                        self.current_interaction_id = self.data_collector.start_interaction(
+                            user_input=user_input,
+                            recommended_flags=recommendation.flags,
+                            confidence=recommendation.confidence,
+                            reasoning=', '.join(recommendation.reasoning),
+                            project_context=context
+                        )
+                else:
+                    # 기본 패턴 매칭
+                    legacy_recommendation = self.pattern_matcher.find_best_match(command, description, context)
+                    recommendation = self._convert_legacy_recommendation(legacy_recommendation)
             
             # 결과 포맷팅
             enhanced_input = self._format_enhanced_command(
@@ -438,7 +512,68 @@ class SCCommandProcessor:
             
         except Exception as e:
             # 오류 발생 시 원본 입력 반환
+            print(f"Warning: SCCommandProcessor error: {e}")
             return user_input
+    
+    def record_execution_result(self, success: bool, execution_time: float, 
+                              error_details: Optional[str] = None):
+        """실행 결과 기록 (학습을 위해)"""
+        
+        if not LEARNING_ENABLED or not self.current_interaction_id:
+            return
+        
+        try:
+            # 상호작용 종료 기록
+            if self.data_collector:
+                self.data_collector.end_interaction(
+                    actual_flags="",  # 실제 사용된 플래그는 Hook에서 수집
+                    success=success,
+                    error_message=error_details
+                )
+            
+            # 즉시 피드백 처리
+            if self.feedback_processor:
+                self.feedback_processor.process_immediate_feedback(
+                    interaction_id=self.current_interaction_id,
+                    success=success,
+                    execution_time=execution_time,
+                    error_details=error_details
+                )
+            
+            self.current_interaction_id = None
+            
+        except Exception as e:
+            print(f"Warning: Failed to record execution result: {e}")
+    
+    def _get_learning_based_recommendation(self, user_input: str, context: Dict) -> PersonalizedRecommendation:
+        """학습 기반 추천 생성"""
+        
+        try:
+            personalized_rec = self.recommender.get_personalized_recommendation(
+                user_input, context
+            )
+            return personalized_rec
+            
+        except Exception as e:
+            print(f"Warning: Learning recommendation failed, falling back to static: {e}")
+            
+            # 폴백: 기본 패턴 매칭
+            command, description = self._parse_sc_command(user_input)
+            legacy_rec = self.pattern_matcher.find_best_match(command, description, context)
+            return self._convert_legacy_recommendation(legacy_rec)
+    
+    def _convert_legacy_recommendation(self, legacy_rec: FlagRecommendation) -> PersonalizedRecommendation:
+        """기존 추천을 새로운 형식으로 변환"""
+        
+        return PersonalizedRecommendation(
+            flags=legacy_rec.flags,
+            confidence=legacy_rec.confidence,
+            reasoning=legacy_rec.reasoning.split(', ') if legacy_rec.reasoning else [],
+            personalization_factors={'legacy_mode': True},
+            learning_confidence=0.0,
+            fallback_used=True,
+            recommendation_id=f"legacy_{int(time.time())}"
+        )
     
     def _parse_sc_command(self, user_input: str) -> Tuple[str, str]:
         """SuperClaude 명령어 파싱"""
@@ -454,15 +589,78 @@ class SCCommandProcessor:
         analyzer = ProjectAnalyzer(self.current_dir)
         return analyzer.analyze()
     
-    def _format_enhanced_command(self, original_input: str, recommendation: FlagRecommendation, context: ProjectContext) -> str:
-        """향상된 명령어 포맷팅"""
+    def _format_enhanced_command(self, original_input: str, recommendation, context) -> str:
+        """향상된 명령어 포맷팅 (학습 기능 지원)"""
         
-        # SuperClaude 활성화 메시지 생성
+        # 추천 타입에 따른 처리
+        if hasattr(recommendation, 'personalization_factors'):
+            # 학습 기반 추천
+            return self._format_learning_recommendation(original_input, recommendation, context)
+        else:
+            # 기존 패턴 기반 추천
+            return self._format_legacy_recommendation(original_input, recommendation, context)
+    
+    def _format_learning_recommendation(self, original_input: str, recommendation: PersonalizedRecommendation, context) -> str:
+        """학습 기반 추천 포맷팅"""
+        
+        # 빠른 모드 확인
+        is_quick_mode = recommendation.personalization_factors.get('quick_mode', False)
+        response_time = recommendation.personalization_factors.get('response_time_ms', 0)
+        
+        # 개인화 정보 준비
+        personalization_info = []
+        if not recommendation.fallback_used and not is_quick_mode:
+            if recommendation.personalization_factors.get('persona_preferences_applied'):
+                personalization_info.append("🎭 개인 선호 persona 적용")
+            if recommendation.personalization_factors.get('project_type_optimized'):
+                personalization_info.append("📁 프로젝트 맞춤 최적화")
+            if recommendation.learning_confidence > 0.7:
+                personalization_info.append("🧠 고신뢰도 학습 모델")
+        
+        # 학습 상태 표시
+        if is_quick_mode:
+            learning_status = f"⚡ 빠른 응답 모드 ({response_time:.1f}ms)"
+        else:
+            learning_status = "🎓 학습 모드" if not recommendation.fallback_used else "📖 기본 모드"
+        
+        activation_msg = f"""🚀 SuperClaude AI 시스템 활성화
+
+📁 프로젝트: {getattr(context, 'project_type', 'Unknown').replace('_', ' ').title()}
+🏗️ 도메인: {getattr(context, 'domain', 'General').replace('_', ' ').title()}
+📊 복잡도: {getattr(context, 'complexity', 'Unknown')} ({getattr(context, 'file_count', 0)}개 파일)
+
+{learning_status}
+🚀 적용된 플래그: {recommendation.flags}
+🎯 신뢰도: {recommendation.confidence}%"""
+
+        if not is_quick_mode:
+            activation_msg += f"\n🧠 학습 신뢰도: {int(recommendation.learning_confidence * 100)}%"
+        
+        activation_msg += "\n\n💡 추천 근거:"
+        
+        for reason in recommendation.reasoning:
+            activation_msg += f"\n   • {reason}"
+        
+        if personalization_info:
+            activation_msg += f"\n\n🎨 개인화 적용:"
+            for info in personalization_info:
+                activation_msg += f"\n   • {info}"
+        elif is_quick_mode:
+            activation_msg += f"\n\n⚡ 빠른 응답:\n   • 즉시 기본 추천 제공\n   • 백그라운드에서 학습 개선 진행 중..."
+        
+        activation_msg += f"\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n{original_input} {recommendation.flags}"
+        
+        return activation_msg
+    
+    def _format_legacy_recommendation(self, original_input: str, recommendation: FlagRecommendation, context) -> str:
+        """기존 패턴 기반 추천 포맷팅"""
+        
+        # 기존 포맷 유지
         activation_msg = f"""🎯 SuperClaude 지능형 분석 활성화
 
-📁 프로젝트: {context.project_type.replace('_', ' ').title()}
-🏗️ 도메인: {context.domain.replace('_', ' ').title()}
-📊 복잡도: {context.complexity} ({context.file_count}개 파일)
+📁 프로젝트: {getattr(context, 'project_type', 'Unknown').replace('_', ' ').title()}
+🏗️ 도메인: {getattr(context, 'domain', 'General').replace('_', ' ').title()}
+📊 복잡도: {getattr(context, 'complexity', 'Unknown')} ({getattr(context, 'file_count', 0)}개 파일)
 
 🚀 적용된 플래그: {recommendation.flags}
 🎯 신뢰도: {recommendation.confidence}%

@@ -6,7 +6,7 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 
 # 색상 정의
 RED='\033[0;31m'
-GREEN='\033[0;32m'  
+GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
@@ -47,21 +47,23 @@ install_dependencies() {
     print_success "의존성 설치 완료"
 }
 
-# 파일 설치  
+# 파일 설치 - 새로운 체계적 폴더 구조
 install_files() {
     print_warning "SuperClaude 파일 설치 중..."
     
-    mkdir -p ~/.claude
+    # 새 구조 디렉토리 생성
+    mkdir -p ~/.claude/superclaude/core
+    mkdir -p ~/.claude/learning
     
-    # 핵심 파일들 복사
-    cp claude_sc_preprocessor.py ~/.claude/ || { print_error "파일 복사 실패"; exit 1; }
-    cp claude_smart_wrapper.py ~/.claude/ || { print_error "파일 복사 실패"; exit 1; }
-    cp orchestrator_rules.yaml ~/.claude/ || { print_error "파일 복사 실패"; exit 1; }
+    # 핵심 파일들 복사 (새 구조로)
+    cp src/claude_sc_preprocessor.py ~/.claude/superclaude/core/ || { print_error "파일 복사 실패"; exit 1; }
+    cp src/claude_smart_wrapper.py ~/.claude/superclaude/core/ || { print_error "파일 복사 실패"; exit 1; }
+    cp src/orchestrator_rules.yaml ~/.claude/superclaude/core/ || { print_error "파일 복사 실패"; exit 1; }
     
     # 실행 권한 부여
-    chmod +x ~/.claude/*.py
+    chmod +x ~/.claude/superclaude/core/*.py
     
-    print_success "파일 설치 완료"
+    print_success "파일 설치 완료 (체계적 구조 적용)"
 }
 
 # Shell Alias 설정
@@ -73,20 +75,20 @@ setup_shell_alias() {
         SHELL_RC="$HOME/.zshrc"
         SHELL_NAME="zsh"
     elif [ -n "$BASH_VERSION" ]; then
-        SHELL_RC="$HOME/.bashrc"  
+        SHELL_RC="$HOME/.bashrc"
         SHELL_NAME="bash"
     else
         print_warning "Shell을 감지할 수 없습니다."
         print_warning "다음 명령어를 수동으로 실행하세요:"
-        echo "alias cs=\"python3 ~/.claude/claude_smart_wrapper.py\""
+        echo "alias cs=\"python3 ~/.claude/superclaude/core/claude_smart_wrapper.py\""
         return
     fi
     
-    # 기존 alias 제거 후 새로 추가
+    # 기존 alias 제거 후 새로 추가 - 새 구조 경로
     sed -i.bak '/alias cs=/d' "$SHELL_RC" 2>/dev/null || true
     echo '' >> "$SHELL_RC"
     echo '# SuperClaude Auto Flags' >> "$SHELL_RC"
-    echo 'alias cs="python3 ~/.claude/claude_smart_wrapper.py"' >> "$SHELL_RC"
+    echo 'alias cs="python3 ~/.claude/superclaude/core/claude_smart_wrapper.py"' >> "$SHELL_RC"
     
     print_success "Shell alias 설정 완료 ($SHELL_NAME)"
 }
