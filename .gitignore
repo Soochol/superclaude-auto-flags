@@ -1,0 +1,41 @@
+# 시스템 파일
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+
+# Python 캐시
+__pycache__/
+*.pyc
+*.pyo
+
+# 개인 설정 파일
+.credentials.json
+settings.json
+settings.*.json
+.superclaude-metadata.json
+
+# 로그 및 임시 디렉토리
+logs/
+backups/
+todos/
+shell-snapshots/
+statsig/
+ide/
+projects/
+commands/
+
+# IDE 파일
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS 생성 파일
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db

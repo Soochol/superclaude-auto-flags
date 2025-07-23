@@ -1,0 +1,237 @@
+# SuperClaude ORCHESTRATOR 규칙 데이터베이스
+# ORCHESTRATOR.md의 Master Routing Table과 패턴 인식 로직을 YAML로 구현
+
+patterns:
+  # 분석 관련 패턴
+  analyze_general:
+    keywords: ["analyze", "분석", "review", "검토", "examine", "살펴"]
+    base_flags: "--persona-analyzer --think"
+    confidence: 85
+    mcp_servers: ["Sequential"]
+    description: "일반적인 코드/시스템 분석"
+    
+  analyze_architecture:
+    keywords: ["architecture", "아키텍처", "system design", "시스템 설계", "structure", "구조"]
+    base_flags: "--persona-architect --ultrathink --seq"
+    confidence: 95
+    mcp_servers: ["Sequential", "Context7"]
+    description: "시스템 아키텍처 분석"
+    complexity: "complex"
+    
+  analyze_security:
+    keywords: ["security", "보안", "vulnerability", "취약점", "audit", "감사", "auth", "인증"]
+    base_flags: "--persona-security --focus security --think --validate"
+    confidence: 95
+    mcp_servers: ["Sequential"]
+    description: "보안 분석 및 감사"
+    complexity: "complex"
+    
+  analyze_performance:
+    keywords: ["performance", "성능", "bottleneck", "병목", "optimization", "최적화", "speed", "속도"]
+    base_flags: "--persona-performance --think-hard --focus performance"
+    confidence: 90
+    mcp_servers: ["Sequential", "Playwright"]
+    description: "성능 분석 및 최적화"
+    complexity: "complex"
+    
+  analyze_large_codebase:
+    keywords: ["large", "큰", "entire", "전체", "comprehensive", "포괄적인", "complete", "완전한"]
+    base_flags: "--delegate --parallel-dirs --persona-analyzer"
+    confidence: 95
+    mcp_servers: ["Sequential", "Task"]
+    description: "대규모 코드베이스 분석"
+    complexity: "complex"
+
+  # 구현 관련 패턴  
+  implement_general:
+    keywords: ["implement", "구현", "create", "생성", "build", "만들기", "develop", "개발"]
+    base_flags: "--persona-backend --c7"
+    confidence: 80
+    mcp_servers: ["Context7", "Sequential"]
+    description: "일반적인 기능 구현"
+    
+  implement_ui_component:
+    keywords: ["component", "컴포넌트", "ui", "interface", "frontend", "프론트엔드", "react", "vue"]
+    base_flags: "--persona-frontend --magic --c7"
+    confidence: 94
+    mcp_servers: ["Magic", "Context7"]
+    description: "UI 컴포넌트 구현"
+    complexity: "simple"
+    
+  implement_api:
+    keywords: ["api", "endpoint", "서버", "server", "backend", "백엔드", "service", "서비스"]
+    base_flags: "--persona-backend --seq --c7"
+    confidence: 92
+    mcp_servers: ["Sequential", "Context7"]
+    description: "API 및 백엔드 서비스 구현"
+    complexity: "moderate"
+    
+  implement_authentication:
+    keywords: ["auth", "인증", "login", "로그인", "user", "사용자", "permission", "권한"]
+    base_flags: "--persona-security --persona-backend --validate"
+    confidence: 90
+    mcp_servers: ["Sequential", "Context7"]
+    description: "인증 시스템 구현"
+    complexity: "complex"
+
+  # 개선 관련 패턴
+  improve_general:
+    keywords: ["improve", "개선", "enhance", "향상", "better", "더 좋게"]
+    base_flags: "--persona-refactorer --think"
+    confidence: 80
+    mcp_servers: ["Sequential"]
+    description: "일반적인 코드 개선"
+    
+  improve_quality:
+    keywords: ["quality", "품질", "refactor", "리팩토링", "cleanup", "정리", "maintainable", "유지보수"]
+    base_flags: "--persona-refactorer --loop --validate"
+    confidence: 88
+    mcp_servers: ["Sequential"]
+    description: "코드 품질 개선"
+    
+  improve_iteratively:
+    keywords: ["iteratively", "반복적으로", "step by step", "단계별로", "gradually", "점진적으로"]
+    base_flags: "--persona-refactorer --seq --loop"
+    confidence: 90
+    mcp_servers: ["Sequential"]
+    description: "반복적 개선"
+    
+  improve_large_system:
+    keywords: ["system", "시스템", "entire", "전체", "comprehensive", "포괄적", "enterprise", "기업"]
+    base_flags: "--wave-mode --adaptive-waves"
+    confidence: 90
+    mcp_servers: ["Sequential", "Task"]
+    description: "대규모 시스템 개선"
+    complexity: "complex"
+
+  # 문서화 관련 패턴
+  document_general:
+    keywords: ["document", "문서", "readme", "guide", "가이드", "manual", "매뉴얼"]
+    base_flags: "--persona-scribe=ko --c7"
+    confidence: 95
+    mcp_servers: ["Context7", "Sequential"]
+    description: "문서 작성"
+    
+  # 테스트 관련 패턴
+  test_general:
+    keywords: ["test", "테스트", "testing", "qa", "quality", "품질"]
+    base_flags: "--persona-qa --play --validate"
+    confidence: 90
+    mcp_servers: ["Playwright", "Sequential"]
+    description: "테스트 및 품질 보증"
+
+  # 디버깅 관련 패턴
+  debug_general:
+    keywords: ["debug", "디버그", "fix", "수정", "bug", "버그", "error", "오류", "issue", "문제"]
+    base_flags: "--persona-analyzer --think --seq"
+    confidence: 85
+    mcp_servers: ["Sequential"]
+    description: "디버깅 및 문제 해결"
+
+# 컨텍스트 기반 수정자 (Context Modifiers)
+context_modifiers:
+  project_type:
+    python_backend:
+      additional_flags: "--validate"
+      preferred_persona: "backend"
+      
+    python_web:
+      additional_flags: "--validate --safe-mode"
+      preferred_persona: "backend"
+      
+    frontend:
+      additional_flags: "--magic"
+      preferred_persona: "frontend"
+      
+    javascript:
+      additional_flags: "--c7"
+      preferred_persona: "frontend"
+      
+  complexity:
+    simple:
+      thinking_level: "--think"
+      
+    moderate:
+      thinking_level: "--think"
+      additional_flags: "--uc"
+      
+    complex:
+      thinking_level: "--think-hard"
+      additional_flags: "--uc --validate"
+      
+  file_count:
+    threshold_delegation: 50  # 50개 이상 파일시 delegation 추가
+    threshold_wave: 100       # 100개 이상 파일시 wave mode 고려
+    
+  domain:
+    hardware_testing:
+      additional_flags: "--validate --safe-mode"
+      preferred_persona: "backend"
+      
+    web_development:
+      additional_flags: "--c7"
+      preferred_persona: "frontend"
+      
+    machine_learning:
+      additional_flags: "--think-hard"
+      preferred_persona: "analyzer"
+
+# ORCHESTRATOR.md Master Routing Table 고급 패턴
+orchestrator_patterns:
+  comprehensive_audit:
+    pattern: "(comprehensive|포괄적|전체).*(audit|감사|분석)"
+    flags: "--wave-mode --wave-validation --systematic-waves"
+    confidence: 95
+    complexity: "complex"
+    description: "종합적인 시스템 감사"
+    
+  security_audit_enterprise:
+    pattern: "(security|보안).*(audit|감사).*(enterprise|기업|production|프로덕션)"
+    flags: "--wave-mode --wave-validation --persona-security"
+    confidence: 95
+    complexity: "complex"
+    description: "기업급 보안 감사"
+    
+  modernize_legacy:
+    pattern: "(modernize|현대화|upgrade|업그레이드).*(legacy|레거시)"
+    flags: "--wave-mode --enterprise-waves --wave-checkpoint"
+    confidence: 92
+    complexity: "complex"
+    description: "레거시 시스템 현대화"
+    
+  comprehensive_code_review:
+    pattern: "(comprehensive|포괄적|complete|완전한).*(review|검토|code|코드)"
+    flags: "--wave-mode --wave-validation --systematic-waves"
+    confidence: 94
+    complexity: "complex"
+    description: "종합적인 코드 리뷰"
+
+# 자동 활성화 임계값
+auto_activation_thresholds:
+  wave_mode:
+    complexity_threshold: 0.8
+    file_count_threshold: 20
+    operation_types_threshold: 2
+    
+  delegation:
+    directory_threshold: 7
+    file_threshold: 50
+    complexity_threshold: 0.6
+    
+  thinking_levels:
+    think: 
+      word_count: 10
+      complexity: "simple"
+    think_hard:
+      word_count: 50  
+      complexity: "moderate"
+    ultrathink:
+      word_count: 100
+      complexity: "complex"
+
+# 기본 설정
+defaults:
+  fallback_flags: "--think --uc"
+  fallback_confidence: 60
+  default_persona: "analyzer"
+  compression_always: true  # 항상 --uc 추가
